@@ -42,6 +42,7 @@ public class ProjectRunner {
 		int minThreads = 1;
 		int maxThreads = 4;
 		long keepAlive = 10;
+		double epsilon = 0.5;
 		
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
 		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, TimeUnit.SECONDS, q);
@@ -56,7 +57,7 @@ public class ProjectRunner {
 				iterations, 
 				clean, 
 				"", 
-				"abalone"));
+				"abalone", epsilon));
 		
 		DataSet hdclean = (new ArffDataSetReader("data/heart_disease.arff")).read();
 		filt.filter(hdclean);
@@ -64,7 +65,7 @@ public class ProjectRunner {
 				iterations, 
 				hdclean, 
 				"", 
-				"hd"));
+				"hd", epsilon));
 		
 		for (String setName : setNames) {
 			for (String reducer : reduced) {
@@ -79,7 +80,8 @@ public class ProjectRunner {
 							iterations, 
 							d, 
 							reducer, 
-							setName));
+							setName,
+							epsilon));
 					// pull in the reduced->clustered data sets
 					for (String clusterer : clustered) {
 						DataSet a = (new ArffDataSetReader(clustReducedDir+setName+clusterer+reducer+".arff")).read();
@@ -89,7 +91,8 @@ public class ProjectRunner {
 								iterations, 
 								a,
 								clusterer+reducer, 
-								setName));
+								setName,
+								epsilon));
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -97,7 +100,7 @@ public class ProjectRunner {
 			}
 		}
 		tpe.shutdown();
-		while (!tpe.awaitTermination(60, TimeUnit.SECONDS)) {
+		while (!tpe.awaitTermination(60, TimeUnit.MINUTES)) {
 			  System.out.println(".");
 		}
 		System.out.println("Done\n========");

@@ -2,6 +2,7 @@ import shared.*;
 import shared.tester.AccuracyTestMetric;
 import shared.tester.ConfusionMatrixTestMetric;
 import shared.tester.NeuralNetworkTester;
+import shared.tester.RawOutputTestMetric;
 import func.nn.backprop.*;
 
 import java.io.*;
@@ -84,7 +85,7 @@ public class NeuralNetTrainer implements Runnable {
      */
     public NeuralNetTrainer(int iterations, DataSet set, String extension, String name, double epsilon) {
     	this(iterations, set, extension, name);
-    	this.epsilon = epsilon;
+    	this.setEpsilon(epsilon);
     }
     
     /**
@@ -94,7 +95,7 @@ public class NeuralNetTrainer implements Runnable {
     private void setArbitraryDefaults() {
     	this.setNumHiddenLayers(1);
     	this.setHiddenLayerNodes(5);
-    	this.epsilon = 0.5;
+    	this.setEpsilon(1e-6);
     	this.setOutputLayerNodes(1);
     	
     }
@@ -121,35 +122,29 @@ public class NeuralNetTrainer implements Runnable {
         // Evaluate the accuracy of the neural network
         AccuracyTestMetric atm = new AccuracyTestMetric();
         ConfusionMatrixTestMetric cmtm = new ConfusionMatrixTestMetric(set.getDescription().getLabelDescription());
-        NeuralNetworkTester tester = new NeuralNetworkTester(network, atm, cmtm);
-
+        RawOutputTestMetric rotm = new RawOutputTestMetric();
+        NeuralNetworkTester tester = new NeuralNetworkTester(network, atm, cmtm, rotm);
+        tester.setEpsilon(this.getEpsilon());
+        
         start = System.nanoTime();
         tester.test(instances);
         end = System.nanoTime();
-        atm.printResults();
-        cmtm.printResults();
-
         double testingTime = (end - start)/Math.pow(10,9);
-        
-        /*for(int j = 0; j < instances.length; j++) {
-        	network.setInputValues(instances[j].getData());
-        	network.run();
-            double actual = Double.parseDouble(instances[j].getLabel().toString());
-            double predicted = Double.parseDouble(network.getOutputValues().toString());
-            double trash = Math.abs(predicted - actual) > epsilon ? incorrect++ : correct++;
-        }*/
 
         try {
             BufferedWriter bw = new BufferedWriter(
             		new FileWriter(new File(dataDir + "nn_results_" + setName+extension+".txt")));
-
-			bw.write("Correctly classified " + correct + " instances." +
-		            "\nIncorrectly classified " + incorrect + " instances.\nPercent correctly classified: "
-		            + df.format(correct/(correct+incorrect)*100) + "%\nTraining time: " + df.format(trainingTime)
-		            + " seconds\nTesting time: " + df.format(testingTime) + " seconds\n");
+            bw.write(atm.getResults());
+            bw.newLine();
+            bw.write(String.format("Training time: %f\nTesting time: %f", trainingTime, testingTime));
+            bw.newLine();
+            bw.newLine();
+            bw.write(cmtm.getResults());
+            bw.newLine();
+            bw.write(rotm.getResults());
 			bw.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			System.out.println(e.toString());
 		}      
     }
 
@@ -193,6 +188,20 @@ public class NeuralNetTrainer implements Runnable {
 	 */
 	public void setHiddenLayerNodes(int hiddenLayerNodes) {
 		this.hiddenLayerNodes = hiddenLayerNodes;
+	}
+
+	/**
+	 * @return the epsilon
+	 */
+	public double getEpsilon() {
+		return epsilon;
+	}
+
+	/**
+	 * @param epsilon the epsilon to set
+	 */
+	public void setEpsilon(double epsilon) {
+		this.epsilon = epsilon;
 	}
 
 }
