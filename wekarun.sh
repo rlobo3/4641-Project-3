@@ -3,7 +3,7 @@ WEKALOC="weka.jar"
 WEKA="java -Xmx1024m -classpath $WEKALOC"
 DATADIR="data"
 RESULTSDIR="results"
-TRAINING_SETS=("mammo.arff")
+TRAINING_SETS=("heart_disease.arff")
 
 cluster () {
     # Question 1

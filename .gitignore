@@ -1,5 +1,6 @@
 bin
 .DS_Store
-data/*
-results/*
+*.csv
+*.arff
+results/*.txt
 weka.jar
