@@ -20,6 +20,7 @@ import shared.filt.ReversibleFilter;
 import shared.reader.ArffDataSetReader;*/
 import shared.DataSet;
 import shared.filt.LabelSelectFilter;
+import shared.filt.LabelSplitFilter;
 import shared.reader.ArffDataSetReader;
 //import shared.reader.CSVDataSetReader;
 import shared.reader.CSVDataSetReader;
@@ -27,9 +28,9 @@ import shared.reader.CSVDataSetReader;
 public class ProjectRunner {
 	/**
 	 * @param args
-	 * @throws InterruptedException 
+	 * @throws Exception 
 	 */
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws Exception {
 		String reducedDir = "data/reduced/";
 		String clustReducedDir = "data/clustered-reduced/";
 		String[] reduced = {"_pca", "_ica", "_insig", "_rp"};
@@ -45,6 +46,29 @@ public class ProjectRunner {
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
 		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, TimeUnit.SECONDS, q);
 		int numTasks = 0;
+		
+		// run the clean sets for comparison
+		DataSet clean = (new CSVDataSetReader("data/abalone.csv")).read();
+		//WEKA's clustering adds the cluster num as the final attribute
+		// so the second to last attribute is now the label
+		LabelSplitFilter filt = new LabelSplitFilter();
+		filt.filter(clean);
+		tpe.submit(new NeuralNetTrainer(
+				iterations, 
+				clean, 
+				"", 
+				"abalone"));
+		numTasks++;
+		
+		DataSet hdclean = (new ArffDataSetReader("data/heart_disease.arff")).read();
+		filt.filter(hdclean);
+		tpe.submit(new NeuralNetTrainer(
+				iterations, 
+				hdclean, 
+				"", 
+				"hd"));
+		numTasks++;
+		
 		for (String setName : setNames) {
 			for (String reducer : reduced) {
 				try {
@@ -63,6 +87,7 @@ public class ProjectRunner {
 					// pull in the reduced->clustered data sets
 					for (String clusterer : clustered) {
 						DataSet a = (new ArffDataSetReader(clustReducedDir+setName+clusterer+reducer+".arff")).read();
+						lsl = new LabelSelectFilter(a.get(0).size()-2);
 						lsl.filter(a);
 						tpe.submit(new NeuralNetTrainer(
 								iterations, 

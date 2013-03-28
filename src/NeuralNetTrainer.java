@@ -7,25 +7,53 @@ import java.text.*;
 public class NeuralNetTrainer implements Runnable {
     private Instance[] instances;
 
-    private int inputLayer = 13, hiddenLayer = 5, outputLayer = 1;
+    /**
+     * Number of nodes per layer.
+     */
+    private int inputeLayerNodes = 13, hiddenLayerNodes = 5, outputLayerNodes = 1;
+    
+    
     private final BackPropagationNetworkFactory factory = new BackPropagationNetworkFactory();
-    private int trainingIterations = 6000;
+    private int trainingIterations;
+    
     private final GradientErrorMeasure measure = new SumOfSquaresError();
+    
     private final WeightUpdateRule updateRule = new RPROPUpdateRule();
+    
+    /**
+     * Directory to output the results to
+     */
     private final String dataDir = "results/";
+    
+    /**
+     * What to append after the {@link DataSet}'s name to the results file
+     */
     private final String extension;
+    
+    /**
+     * The name of the {@link DataSet}. Used for writing results
+     */
     private final String setName;
-    private final int numAttrs = 13;
+    
+    /**
+     * The {@link DataSet} to train and evaluate the Neural Net on
+     */
     private final DataSet set;
+    
+    /** 
+     * Error bound
+     */
+    private double epsilon = 1e-6; 
+    
 
     private static final DecimalFormat df = new DecimalFormat("0.000");
 
     /**
-     * 
-     * @param iterations
-     * @param set
-     * @param extension
-     * @param name
+     * Construct a NeuralNetTrainer with the given parameters using the default epsilon of 0.5
+     * @param iterations the number of iterations to train over
+     * @param set {@link DataSet} to train on
+     * @param extension string to append to the results file (used to delineate on set of results from another)
+     * @param name of the {@link DataSet}
      */
     public NeuralNetTrainer(int iterations, DataSet set, String extension, String name) {
     	this.trainingIterations = iterations;
@@ -33,9 +61,25 @@ public class NeuralNetTrainer implements Runnable {
     	this.set = set;
     	this.extension = extension;
     	this.setName = name;
-    	this.inputLayer = this.set.get(0).size();
+    	this.inputeLayerNodes = this.set.get(0).size();
     }
     
+    /**
+     * Construct a NeuralNetTrainer with the given parameters with a user-given epsilon value
+     * @param iterations
+     * @param set
+     * @param extension
+     * @param name
+     */
+    public NeuralNetTrainer(int iterations, DataSet set, String extension, String name, double epsilon) {
+    	this(iterations, set, extension, name);
+    	this.epsilon = epsilon;
+    }
+    
+    /**
+     * Train the neural network on the {@link DataSet} provided upon construction, then
+     * evaluate its accuracy and print the results to a file
+     */
     public void run() {		
     	System.out.println("Running");
         BufferedWriter bw = null;
@@ -48,22 +92,22 @@ public class NeuralNetTrainer implements Runnable {
     	double correct = 0, incorrect = 0;
 
         BackPropagationNetwork network = factory.createClassificationNetwork(
-           new int[] { inputLayer, hiddenLayer, outputLayer });
+           new int[] { inputeLayerNodes, hiddenLayerNodes, getOutputLayerNodes() });
 
         ConvergenceTrainer trainer = new ConvergenceTrainer(
                new BatchBackPropagationTrainer(set, network,
-            		   measure, updateRule), 1E-10, trainingIterations);
+            		   measure, updateRule), epsilon, trainingIterations);
         long start = System.nanoTime();
-        double err = trainer.train(); //problem here
+        double err = trainer.train();
         long end = System.nanoTime();
         double trainingTime = (end - start)/Math.pow(10,9);
         start = System.nanoTime();
         for(int j = 0; j < instances.length; j++) {
         	double predicted, actual;
-            predicted = Double.parseDouble(instances[j].getLabel().toString());
-            actual = Double.parseDouble(network.getOutputValues().toString());
-
-            double trash = Math.abs(predicted - actual) < 0.5 ? correct++ : incorrect++;
+            actual = Double.parseDouble(instances[j].getLabel().toString());
+            predicted = Double.parseDouble(network.getOutputValues().toString());
+            System.out.println("Predicted: " + predicted +", Actual: " + actual);
+            double trash = Math.abs(predicted - actual) < epsilon ? correct++ : incorrect++;
 
         }
         end = System.nanoTime();
@@ -80,5 +124,13 @@ public class NeuralNetTrainer implements Runnable {
 		}      
         System.out.println("Trainer Completed");
     }
+
+	public int getOutputLayerNodes() {
+		return outputLayerNodes;
+	}
+
+	public void setOutputLayerNodes(int outputLayerNodes) {
+		this.outputLayerNodes = outputLayerNodes;
+	}
 
 }
