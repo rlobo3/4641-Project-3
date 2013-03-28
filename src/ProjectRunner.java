@@ -35,8 +35,8 @@ public class ProjectRunner {
 		String clustReducedDir = "data/clustered-reduced/";
 		String[] reduced = {"_pca", "_ica", "_insig", "_rp"};
 		String[] clustered = {"_kmeans", "_emax"};
-		String[] setNames = {"abalone", "hd"};
-		int iterations = 8000;
+		String[] setNames = {"hd"};
+		int iterations = 4000;
 		
 		// numbers for the ThreadPoolExecutor
 		int minThreads = 1;
@@ -45,7 +45,6 @@ public class ProjectRunner {
 		
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
 		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, TimeUnit.SECONDS, q);
-		int numTasks = 0;
 		
 		// run the clean sets for comparison
 		DataSet clean = (new CSVDataSetReader("data/abalone.csv")).read();
@@ -58,7 +57,6 @@ public class ProjectRunner {
 				clean, 
 				"", 
 				"abalone"));
-		numTasks++;
 		
 		DataSet hdclean = (new ArffDataSetReader("data/heart_disease.arff")).read();
 		filt.filter(hdclean);
@@ -67,7 +65,6 @@ public class ProjectRunner {
 				hdclean, 
 				"", 
 				"hd"));
-		numTasks++;
 		
 		for (String setName : setNames) {
 			for (String reducer : reduced) {
@@ -83,7 +80,6 @@ public class ProjectRunner {
 							d, 
 							reducer, 
 							setName));
-					numTasks++;
 					// pull in the reduced->clustered data sets
 					for (String clusterer : clustered) {
 						DataSet a = (new ArffDataSetReader(clustReducedDir+setName+clusterer+reducer+".arff")).read();
@@ -94,26 +90,17 @@ public class ProjectRunner {
 								a,
 								clusterer+reducer, 
 								setName));
-						numTasks++;
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 		}
-		int i = 0;
-		while (tpe.getCompletedTaskCount() < numTasks) {
-			//System.out.println("Fuck java");
-			i++;
-		}
 		tpe.shutdown();
 		while (!tpe.awaitTermination(60, TimeUnit.SECONDS)) {
 			  System.out.println(".");
 		}
 		System.out.println("Done\n========");
-
-		System.out.println(i);
-
 		
 	}
 	
